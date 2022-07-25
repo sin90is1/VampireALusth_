@@ -13,6 +13,9 @@
 
 AVampireALusthCharacter::AVampireALusthCharacter()
 {
+	//9 setup AbilitySystemComponent
+	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 
@@ -50,11 +53,98 @@ AVampireALusthCharacter::AVampireALusthCharacter()
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 
-	/*SprintSpeedMultyplyer = 0.6f;*/
+// 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+	AttributeSet = CreateDefaultSubobject<UVampireALusthAttributeSet>(TEXT("AttributeSet"));
+
 }
 
-//////////////////////////////////////////////////////////////////////////
-// Input
+
+void AVampireALusthCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+	InitializeAttributes();
+
+	if (IsValid(AbilitySystemComponent))
+	{
+		AbilitySystemComponent->GetSet<UAttributeSet>();
+
+		//GetGameplayAttributeValueChangedDelegate will enable you to bind delegates without programming them manually.
+		AbilitySystemComponent->InitAbilityActorInfo(this, this);
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AttributeSet->GetHealthAttribute()).AddUObject(this, &AVampireALusthCharacter::HandleHealthChanged);
+	}
+
+}
+
+
+void AVampireALusthCharacter::InitializeAttributes()
+{
+	if (!IsValid(AbilitySystemComponent))
+	{
+		return;
+	}
+
+	if (!DefaultAttributes)
+	{
+		UE_LOG(LogTemp, Error, TEXT("%s() Missing DefaultAttributes for %s. Please fill in the character's Blueprint."), *FString(__FUNCTION__), *GetName());
+		return;
+	}
+
+	FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+	EffectContext.AddSourceObject(this);
+
+	FGameplayEffectSpecHandle NewHandle = AbilitySystemComponent->MakeOutgoingSpec(DefaultAttributes, 0, EffectContext);
+	if (NewHandle.IsValid())
+	{
+		FActiveGameplayEffectHandle ActiveGEHandle = AbilitySystemComponent->ApplyGameplayEffectSpecToTarget(*NewHandle.Data.Get(), AbilitySystemComponent);
+	}
+}
+
+
+float AVampireALusthCharacter::GetHealth() const
+{
+	if (IsValid(AttributeSet))
+	{
+		return AttributeSet->GetHealth();
+	}
+
+	return -1.0f;
+}
+
+
+void AVampireALusthCharacter::GrantAbility(TSubclassOf<UGameplayAbility> AbilityClass, int32 Level, int32 InputCode)
+{
+
+	if (GetLocalRole() == ROLE_Authority && IsValid(AbilitySystemComponent) && IsValid(AbilityClass))
+	{
+		UGameplayAbility* Ability = AbilityClass->GetDefaultObject<UGameplayAbility>();
+
+		if (IsValid(Ability))
+		{
+			FGameplayAbilitySpec AbilitySpec(
+				Ability,
+				Level,
+				InputCode
+			);
+
+			AbilitySystemComponent->GiveAbility(AbilitySpec);
+		}
+	}
+}
+
+void AVampireALusthCharacter::ActivateAbility(int32 InputCode)
+{
+
+	if (IsValid(AbilitySystemComponent))
+	{
+		AbilitySystemComponent->AbilityLocalInputPressed(InputCode);
+	}
+}
+
+
+void AVampireALusthCharacter::HandleHealthChanged(const FOnAttributeChangeData& Data)
+{
+	OnHealthChanged(Data.NewValue);
+}
 
 void AVampireALusthCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
 {
@@ -62,6 +152,7 @@ void AVampireALusthCharacter::SetupPlayerInputComponent(class UInputComponent* P
 	check(PlayerInputComponent);
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
+
 
 	PlayerInputComponent->BindAxis("Move Forward / Backward", this, &AVampireALusthCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("Move Right / Left", this, &AVampireALusthCharacter::MoveRight);
@@ -80,6 +171,10 @@ void AVampireALusthCharacter::SetupPlayerInputComponent(class UInputComponent* P
 
 	PlayerInputComponent->BindAction("Sprints", IE_Pressed, this, &AVampireALusthCharacter::Sprint);
 	PlayerInputComponent->BindAction("Sprints", IE_Released, this, &AVampireALusthCharacter::StopSprint);
+
+	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &AVampireALusthCharacter::StartCrouch);
+	PlayerInputComponent->BindAction("Crouch", IE_Released, this, &AVampireALusthCharacter::StopCrouch);
+	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
 }
 
 void AVampireALusthCharacter::TouchStarted(ETouchIndex::Type FingerIndex, FVector Location)
@@ -137,10 +232,18 @@ void AVampireALusthCharacter::MoveRight(float Value)
 
 void AVampireALusthCharacter::Sprint() {
 	bIsSprinting = true;
-	/*GetCharacterMovement()->MaxWalkSpeed *= SprintSpeedMultyplyer;*/
 }
 
 void AVampireALusthCharacter::StopSprint() {
 	bIsSprinting = false;
-	/*GetCharacterMovement()->MaxWalkSpeed /= SprintSpeedMultyplyer;*/
+}
+
+void AVampireALusthCharacter::StartCrouch()
+{
+	Crouch();
+}
+
+void AVampireALusthCharacter::StopCrouch()
+{
+	UnCrouch();
 }

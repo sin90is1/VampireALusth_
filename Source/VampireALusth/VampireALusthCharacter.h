@@ -4,10 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "AbilitySystemInterface.h"
+#include "AbilitySystemComponent.h"
+#include "VampireALusthAttributeSet.h"
 #include "VampireALusthCharacter.generated.h"
 
+//-1 add IAbilitySystemInterface to not get error for GetAbilitySystemComponent
 UCLASS(config=Game)
-class AVampireALusthCharacter : public ACharacter
+class AVampireALusthCharacter : public ACharacter, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
@@ -18,6 +22,7 @@ class AVampireALusthCharacter : public ACharacter
 	/** Follow camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* FollowCamera;
+
 public:
 	AVampireALusthCharacter();
 
@@ -25,8 +30,53 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Input)
 	float TurnRateGamepad;
 
-// 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Character Movement: Walking")
-// 		float SprintSpeedMultyplyer;
+
+	//-2 adding ability systeam componet //
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
+		class UAbilitySystemComponent* AbilitySystemComponent;
+
+	//-3
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override
+	{
+		return AbilitySystemComponent;
+	}
+
+	UFUNCTION(BlueprintCallable, Category = "GAS|Attributes|Abilities")
+		float GetHealth() const;
+
+// 	UFUNCTION(BlueprintCallable, Category = "GAS|Attributes|Abilities")
+// 		float MaxHealth() const;
+// 
+// 	UFUNCTION(BlueprintCallable, Category = "Attributes|Abilities")
+// 		float Stamina() const;
+
+	/** Grants an Ability at the given level */
+	UFUNCTION(BlueprintCallable, Category = "GAS|Abilities")
+		void GrantAbility(TSubclassOf<UGameplayAbility> AbilityClass, int32 Level, int32 InputCode);
+
+	/*activate an Ability whit the matching input code*/
+	UFUNCTION(BlueprintCallable, Category = "GAS|Abilities")
+		void ActivateAbility(int32 InputCode);
+
+
+protected:
+
+	// Called when the game starts or when spawned
+	virtual void BeginPlay() override;
+
+	void InitializeAttributes();
+
+	UPROPERTY()
+		UVampireALusthAttributeSet* AttributeSet;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "GAS|Abilities")
+		TSubclassOf<class UGameplayEffect> DefaultAttributes;
+
+	UFUNCTION(BlueprintImplementableEvent)
+		void OnHealthChanged(float DeltaValue);
+
+	void HandleHealthChanged(const FOnAttributeChangeData& Data);
+
 
 protected:
 
@@ -58,7 +108,9 @@ protected:
 	void StopSprint();
 	bool bIsSprinting = false;
 
-protected:
+	void StartCrouch();
+	void StopCrouch();
+	
 	// APawn interface
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	// End of APawn interface
