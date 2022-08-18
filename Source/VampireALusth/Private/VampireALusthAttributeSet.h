@@ -14,24 +14,46 @@
 	GAMEPLAYATTRIBUTE_VALUE_SETTER(PropertyName) \
 	GAMEPLAYATTRIBUTE_VALUE_INITTER(PropertyName)
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnHelthchangeDelegate, float, Health, float, MaxHealth);
+
 UCLASS()
 class UVampireALusthAttributeSet : public UAttributeSet
 {
 	GENERATED_BODY()
 
 public:
+	UVampireALusthAttributeSet();
+
 	void PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data) override;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Character")
-		FGameplayAttributeData MaxHealth;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AttributeSetCharacter")
+	FGameplayAttributeData MaxHealth;
 	ATTRIBUTE_ACCESSORS(UVampireALusthAttributeSet, MaxHealth)
 
-		UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Character")
-		FGameplayAttributeData Health;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|Character")
+	FGameplayAttributeData Health;
 	ATTRIBUTE_ACCESSORS(UVampireALusthAttributeSet, Health)
 
-		UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS|Character")
-		FGameplayAttributeData Stamina;
-	ATTRIBUTE_ACCESSORS(UVampireALusthAttributeSet, Stamina)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|Character")
+	FGameplayAttributeData Mana;
+	ATTRIBUTE_ACCESSORS(UVampireALusthAttributeSet, Mana)
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|Character")
+	FGameplayAttributeData MaxMana;
+	ATTRIBUTE_ACCESSORS(UVampireALusthAttributeSet, MaxMana)
+
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|Character")
+	FGameplayAttributeData Energy;
+	ATTRIBUTE_ACCESSORS(UVampireALusthAttributeSet, Energy)
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|Character")
+	FGameplayAttributeData MaxEnergy;
+	ATTRIBUTE_ACCESSORS(UVampireALusthAttributeSet, MaxEnergy)
+
+
+		FOnHelthchangeDelegate OnHelthchange;
+		FOnHelthchangeDelegate OnManachange;
+		FOnHelthchangeDelegate OnEnergychange;
 
 };

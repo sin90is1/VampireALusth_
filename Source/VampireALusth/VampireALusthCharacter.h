@@ -9,7 +9,8 @@
 #include "VampireALusthAttributeSet.h"
 #include "VampireALusthCharacter.generated.h"
 
-//-1 add IAbilitySystemInterface to not get error for GetAbilitySystemComponent
+class UVampireALusthAttributeSet;
+
 UCLASS(config=Game)
 class AVampireALusthCharacter : public ACharacter, public IAbilitySystemInterface
 {
@@ -30,25 +31,21 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Input)
 	float TurnRateGamepad;
 
+	
 
-	//-2 adding ability systeam componet //
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 		class UAbilitySystemComponent* AbilitySystemComponent;
 
-	//-3
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override
 	{
 		return AbilitySystemComponent;
 	}
 
 	UFUNCTION(BlueprintCallable, Category = "GAS|Attributes|Abilities")
-		float GetHealth() const;
+	virtual	float GetHealth() const;
 
-// 	UFUNCTION(BlueprintCallable, Category = "GAS|Attributes|Abilities")
-// 		float MaxHealth() const;
-// 
-// 	UFUNCTION(BlueprintCallable, Category = "Attributes|Abilities")
-// 		float Stamina() const;
+ 	UFUNCTION(BlueprintCallable, Category = "GAS|Attributes|Abilities")
+	virtual	float GetMaxHealth() const;
 
 	/** Grants an Ability at the given level */
 	UFUNCTION(BlueprintCallable, Category = "GAS|Abilities")
@@ -58,62 +55,64 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GAS|Abilities")
 		void ActivateAbility(int32 InputCode);
 
+	UFUNCTION()
+		void OnHealthChanged(float Health, float MaxHealth);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "AttributeSetCharacter", meta = (DisplayName = "OnHealthChanged"))
+		void BP_OnHealthChanged(float Health, float MaxHealth);
+
+	UFUNCTION()
+		void OnManaChanged(float Mana, float MaxMana);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "AttributeSetCharacter", meta = (DisplayName = "OnManaChanged"))
+		void BP_OnManaChanged(float Mana, float MaxMana);
+
+	UFUNCTION()
+		void OnEnergyChanged(float Energy, float MaxEnergy);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "AttributeSetCharacter", meta = (DisplayName = "OnEnergyChanged"))
+		void BP_OnEnergyChanged(float Energy, float MaxEnergy);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "AttributeSetCharacter", meta = (DisplayName = "Die"))
+		void BP_Die();
+
+	UFUNCTION(BlueprintCallable, Category = "CharacterBase")
+		bool IsOtherHostile(AVampireALusthCharacter* Other);
+
+	uint8 GetTeamID() const;
+
+	UFUNCTION(BlueprintCallable, Category = "CharacterBase")
+		void AddGameplayTag(FGameplayTag& TagToAdd);
+	UFUNCTION(BlueprintCallable, Category = "CharacterBase")
+		void RemoveGameplayTag(FGameplayTag& TagToRemove);
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterBase")
+		FGameplayTag FullHealthTag;
+
+	UFUNCTION(BlueprintCallable, Category = "CharacterBase")
+		void HitStun(float StunDuration);
 
 protected:
 
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	void InitializeAttributes();
-
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "AttributeSetCharacter")
 		UVampireALusthAttributeSet* AttributeSet;
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "GAS|Abilities")
 		TSubclassOf<class UGameplayEffect> DefaultAttributes;
 
-	UFUNCTION(BlueprintImplementableEvent)
-		void OnHealthChanged(float DeltaValue);
-
-	void HandleHealthChanged(const FOnAttributeChangeData& Data);
-
-
 protected:
 
-	/** Called for forwards/backward input */
-	void MoveForward(float Value);
 
-	/** Called for side to side input */
-	void MoveRight(float Value);
+ 	bool bIsDead;
+ 	uint8 TeamID;
+	void AutoDeterminTeamIDbyControllerType();
+	void Dead();
+	void DisableInputControl();
+	void EnableInputControl();
+	FTimerHandle StunTimeHandle;
 
-	/** 
-	 * Called via input to turn at a given rate. 
-	 * @param Rate	This is a normalized rate, i.e. 1.0 means 100% of desired turn rate
-	 */
-	void TurnAtRate(float Rate);
-
-	/**
-	 * Called via input to turn look up/down at a given rate. 
-	 * @param Rate	This is a normalized rate, i.e. 1.0 means 100% of desired turn rate
-	 */
-	void LookUpAtRate(float Rate);
-
-	/** Handler for when a touch input begins. */
-	void TouchStarted(ETouchIndex::Type FingerIndex, FVector Location);
-
-	/** Handler for when a touch input stops. */
-	void TouchStopped(ETouchIndex::Type FingerIndex, FVector Location);
-
-	void Sprint();
-	void StopSprint();
-	bool bIsSprinting = false;
-
-	void StartCrouch();
-	void StopCrouch();
-	
-	// APawn interface
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-	// End of APawn interface
 
 public:
 	/** Returns CameraBoom subobject **/

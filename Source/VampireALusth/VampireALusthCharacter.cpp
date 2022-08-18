@@ -3,10 +3,12 @@
 #include "VampireALusthCharacter.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
-#include "Components/InputComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
+ #include "GameFramework/PlayerController.h"
+ #include "AIController.h"
+ #include "BrainComponent.h"
+
 
 //////////////////////////////////////////////////////////////////////////
 // AVampireALusthCharacter
@@ -35,7 +37,7 @@ AVampireALusthCharacter::AVampireALusthCharacter()
 	// instead of recompiling to adjust them
 	GetCharacterMovement()->JumpZVelocity = 700.f;
 	GetCharacterMovement()->AirControl = 0.35f;
-	GetCharacterMovement()->MaxWalkSpeed = 500.f;
+	GetCharacterMovement()->MaxWalkSpeed = 600.f;
 	GetCharacterMovement()->MinAnalogWalkSpeed = 20.f;
 	GetCharacterMovement()->BrakingDecelerationWalking = 2000.f;
 
@@ -53,8 +55,13 @@ AVampireALusthCharacter::AVampireALusthCharacter()
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 
-// 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
+
+
 	AttributeSet = CreateDefaultSubobject<UVampireALusthAttributeSet>(TEXT("AttributeSet"));
+
+	bIsDead = false;
+	TeamID = 255;
 
 }
 
@@ -62,42 +69,15 @@ AVampireALusthCharacter::AVampireALusthCharacter()
 void AVampireALusthCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	InitializeAttributes();
 
-	if (IsValid(AbilitySystemComponent))
-	{
-		AbilitySystemComponent->GetSet<UAttributeSet>();
+	AttributeSet->OnHelthchange.AddDynamic(this, &AVampireALusthCharacter::OnHealthChanged);
+	AttributeSet->OnManachange.AddDynamic(this, &AVampireALusthCharacter::OnManaChanged);
+	AttributeSet->OnEnergychange.AddDynamic(this, &AVampireALusthCharacter::OnEnergyChanged);
 
-		//GetGameplayAttributeValueChangedDelegate will enable you to bind delegates without programming them manually.
-		AbilitySystemComponent->InitAbilityActorInfo(this, this);
-		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AttributeSet->GetHealthAttribute()).AddUObject(this, &AVampireALusthCharacter::HandleHealthChanged);
-	}
-
+	AutoDeterminTeamIDbyControllerType();
+	AddGameplayTag(FullHealthTag);
 }
 
-
-void AVampireALusthCharacter::InitializeAttributes()
-{
-	if (!IsValid(AbilitySystemComponent))
-	{
-		return;
-	}
-
-	if (!DefaultAttributes)
-	{
-		UE_LOG(LogTemp, Error, TEXT("%s() Missing DefaultAttributes for %s. Please fill in the character's Blueprint."), *FString(__FUNCTION__), *GetName());
-		return;
-	}
-
-	FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
-	EffectContext.AddSourceObject(this);
-
-	FGameplayEffectSpecHandle NewHandle = AbilitySystemComponent->MakeOutgoingSpec(DefaultAttributes, 0, EffectContext);
-	if (NewHandle.IsValid())
-	{
-		FActiveGameplayEffectHandle ActiveGEHandle = AbilitySystemComponent->ApplyGameplayEffectSpecToTarget(*NewHandle.Data.Get(), AbilitySystemComponent);
-	}
-}
 
 
 float AVampireALusthCharacter::GetHealth() const
@@ -109,6 +89,12 @@ float AVampireALusthCharacter::GetHealth() const
 
 	return -1.0f;
 }
+
+float AVampireALusthCharacter::GetMaxHealth() const
+{
+	return AttributeSet->GetMaxHealth();
+}
+
 
 
 void AVampireALusthCharacter::GrantAbility(TSubclassOf<UGameplayAbility> AbilityClass, int32 Level, int32 InputCode)
@@ -141,109 +127,108 @@ void AVampireALusthCharacter::ActivateAbility(int32 InputCode)
 }
 
 
-void AVampireALusthCharacter::HandleHealthChanged(const FOnAttributeChangeData& Data)
+
+void AVampireALusthCharacter::OnHealthChanged(float Health, float MaxHealth)
 {
-	OnHealthChanged(Data.NewValue);
-}
-
-void AVampireALusthCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
-{
-	// Set up gameplay key bindings
-	check(PlayerInputComponent);
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
-	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
-
-
-	PlayerInputComponent->BindAxis("Move Forward / Backward", this, &AVampireALusthCharacter::MoveForward);
-	PlayerInputComponent->BindAxis("Move Right / Left", this, &AVampireALusthCharacter::MoveRight);
-
-	// We have 2 versions of the rotation bindings to handle different kinds of devices differently
-	// "turn" handles devices that provide an absolute delta, such as a mouse.
-	// "turnrate" is for devices that we choose to treat as a rate of change, such as an analog joystick
-	PlayerInputComponent->BindAxis("Turn Right / Left Mouse", this, &APawn::AddControllerYawInput);
-	PlayerInputComponent->BindAxis("Turn Right / Left Gamepad", this, &AVampireALusthCharacter::TurnAtRate);
-	PlayerInputComponent->BindAxis("Look Up / Down Mouse", this, &APawn::AddControllerPitchInput);
-	PlayerInputComponent->BindAxis("Look Up / Down Gamepad", this, &AVampireALusthCharacter::LookUpAtRate);
-
-	// handle touch devices
-	PlayerInputComponent->BindTouch(IE_Pressed, this, &AVampireALusthCharacter::TouchStarted);
-	PlayerInputComponent->BindTouch(IE_Released, this, &AVampireALusthCharacter::TouchStopped);
-
-	PlayerInputComponent->BindAction("Sprints", IE_Pressed, this, &AVampireALusthCharacter::Sprint);
-	PlayerInputComponent->BindAction("Sprints", IE_Released, this, &AVampireALusthCharacter::StopSprint);
-
-	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &AVampireALusthCharacter::StartCrouch);
-	PlayerInputComponent->BindAction("Crouch", IE_Released, this, &AVampireALusthCharacter::StopCrouch);
-	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
-}
-
-void AVampireALusthCharacter::TouchStarted(ETouchIndex::Type FingerIndex, FVector Location)
-{
-	Jump();
-}
-
-void AVampireALusthCharacter::TouchStopped(ETouchIndex::Type FingerIndex, FVector Location)
-{
-	StopJumping();
-}
-
-void AVampireALusthCharacter::TurnAtRate(float Rate)
-{
-	// calculate delta for this frame from the rate information
-	AddControllerYawInput(Rate * TurnRateGamepad * GetWorld()->GetDeltaSeconds());
-}
-
-void AVampireALusthCharacter::LookUpAtRate(float Rate)
-{
-	// calculate delta for this frame from the rate information
-	AddControllerPitchInput(Rate * TurnRateGamepad * GetWorld()->GetDeltaSeconds());
-}
-
-void AVampireALusthCharacter::MoveForward(float Value)
-{
-	if ((Controller != nullptr) && (Value != 0.0f))
+	if (Health<=0.0f && !bIsDead)
 	{
-		// find out which way is forward
-		const FRotator Rotation = Controller->GetControlRotation();
-		const FRotator YawRotation(0, Rotation.Yaw, 0);
-		if (!bIsSprinting)
-			Value *= 0.7;
-		// get forward vector
-		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-		AddMovementInput(Direction, Value);
+		bIsDead = true;
+		Dead();
+		BP_Die();
+	}
+	BP_OnHealthChanged(Health, MaxHealth);
+}
+
+void AVampireALusthCharacter::OnManaChanged(float Mana, float MaxMana)
+{
+	BP_OnManaChanged(Mana, MaxMana);
+}
+
+void AVampireALusthCharacter::OnEnergyChanged(float Energy, float MaxEnergy)
+{
+	BP_OnEnergyChanged(Energy, MaxEnergy);
+}
+
+bool AVampireALusthCharacter::IsOtherHostile(AVampireALusthCharacter* Other)
+ {
+ 	return TeamID != Other->GetTeamID();
+ }
+ 
+ uint8 AVampireALusthCharacter::GetTeamID() const
+ {
+ 	return TeamID;
+ }
+
+ void AVampireALusthCharacter::AddGameplayTag(FGameplayTag& TagToAdd)
+ {
+	 GetAbilitySystemComponent()->AddLooseGameplayTag(TagToAdd);
+	 GetAbilitySystemComponent()->SetTagMapCount(TagToAdd, 1);
+ }
+
+ void AVampireALusthCharacter::RemoveGameplayTag(FGameplayTag& TagToRemove)
+ {
+	 GetAbilitySystemComponent()->RemoveLooseGameplayTag(TagToRemove);
+ }
+
+ void AVampireALusthCharacter::AutoDeterminTeamIDbyControllerType()
+ {
+ 	if (GetController()&& GetController()->IsPlayerController())
+ 	{
+ 		TeamID = 0;
+ 	}
+ }
+
+void AVampireALusthCharacter::Dead()
+{
+	APlayerController* PC = Cast<APlayerController>(GetController());
+
+	if (PC)
+	{
+		PC->DisableInput(PC);
+	}
+	AAIController* AIC = Cast<AAIController>(GetController());
+	if (AIC)
+	{
+		AIC->GetBrainComponent()->StopLogic("Dead");
 	}
 }
 
-void AVampireALusthCharacter::MoveRight(float Value)
+void AVampireALusthCharacter::DisableInputControl()
 {
-	if ( (Controller != nullptr) && (Value != 0.0f) )
+	APlayerController* PC = Cast<APlayerController>(GetController());
+
+	if (PC)
 	{
-		// find out which way is right
-		const FRotator Rotation = Controller->GetControlRotation();
-		const FRotator YawRotation(0, Rotation.Yaw, 0);
-		if (!bIsSprinting)
-			Value *= 0.7;
-		// get right vector 
-		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-		// add movement in that direction
-		AddMovementInput(Direction, Value);
+		PC->DisableInput(PC);
+	}
+	AAIController* AIC = Cast<AAIController>(GetController());
+	if (AIC)
+	{
+		AIC->GetBrainComponent()->StopLogic("Dead");
 	}
 }
 
-void AVampireALusthCharacter::Sprint() {
-	bIsSprinting = true;
-}
-
-void AVampireALusthCharacter::StopSprint() {
-	bIsSprinting = false;
-}
-
-void AVampireALusthCharacter::StartCrouch()
+void AVampireALusthCharacter::EnableInputControl()
 {
-	Crouch();
+	if (!bIsDead)
+	{
+		APlayerController* PC = Cast<APlayerController>(GetController());
+
+		if (PC)
+		{
+			PC->EnableInput(PC);
+		}
+		AAIController* AIC = Cast<AAIController>(GetController());
+		if (AIC)
+		{
+			AIC->GetBrainComponent()->RestartLogic();
+		}
+	}
+	
 }
 
-void AVampireALusthCharacter::StopCrouch()
+void AVampireALusthCharacter::HitStun(float StunDuration)
 {
-	UnCrouch();
+	DisableInputControl();
+	GetWorldTimerManager().SetTimer(StunTimeHandle, this, &AVampireALusthCharacter::EnableInputControl, StunDuration, false);
 }
