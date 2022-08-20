@@ -4,7 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h"
+#include "AbilityType.h"
 #include "GameplayAbilityBase.generated.h"
+
 
 /**
  * 
@@ -16,4 +18,7 @@ class VAMPIREALUSTH_API UGameplayAbilityBase : public UGameplayAbility
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AbilityBase")
 		UMaterialInstance* UIMaterial;
+
+	UFUNCTION(BlueprintCallable, Category = "AbilityBase")
+		FGameplayAbilityInfo GetAbilityInfo();
 };

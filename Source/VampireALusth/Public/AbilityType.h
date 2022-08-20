@@ -4,10 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "GameplayAbilityBase.h"
 #include "AbilityType.generated.h"
 
-class UGameplayAbilityBae;
+class UGameplayAbilityBase;
 
 UENUM(BlueprintType)
 enum class EAbilityCostType : uint8

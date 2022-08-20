@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "AbilityType.h"
 #include "VALPlayerController.generated.h"
 
 
@@ -12,7 +13,10 @@ UCLASS()
 class VAMPIREALUSTH_API AVALPlayerController : public APlayerController
 {
 	GENERATED_BODY()
-// 
-// 		virtual void SetupInputComponent() override;
+
+
+public:
+	UFUNCTION(BlueprintImplementableEvent, Category = "PlayerControlerBase")
+	void AddAbilityToUI(FGameplayAbilityInfo AbilityInfo);
 
 };

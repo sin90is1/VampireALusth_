@@ -5,13 +5,16 @@
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
- #include "GameFramework/PlayerController.h"
- #include "AIController.h"
- #include "BrainComponent.h"
+#include "GameFramework/PlayerController.h"
+#include "AIController.h"
+#include "BrainComponent.h"
+#include "GameplayAbilityBase.h"
+#include "VALPlayerController.h"
 
 
 //////////////////////////////////////////////////////////////////////////
 // AVampireALusthCharacter
+
 
 AVampireALusthCharacter::AVampireALusthCharacter()
 {
@@ -97,22 +100,50 @@ float AVampireALusthCharacter::GetMaxHealth() const
 
 
 
-void AVampireALusthCharacter::GrantAbility(TSubclassOf<UGameplayAbility> AbilityClass, int32 Level, int32 InputCode)
+// void AVampireALusthCharacter::GrantAbility(TSubclassOf<UGameplayAbility> AbilityClass, int32 Level, int32 InputCode)
+// {
+// 
+// 	if (GetLocalRole() == ROLE_Authority && IsValid(AbilitySystemComponent) && IsValid(AbilityClass))
+// 	{
+// 		UGameplayAbility* Ability = AbilityClass->GetDefaultObject<UGameplayAbility>();
+// 
+// 		if (IsValid(Ability))
+// 		{
+// 			FGameplayAbilitySpec AbilitySpec(
+// 				Ability,
+// 				Level,
+// 				InputCode
+// 			);
+// 
+// 			AbilitySystemComponent->GiveAbility(AbilitySpec);
+// 		}
+// 	}
+// }
+
+void AVampireALusthCharacter::AquireAbility(TSubclassOf<UGameplayAbility> AbilityToAquire)
 {
-
-	if (GetLocalRole() == ROLE_Authority && IsValid(AbilitySystemComponent) && IsValid(AbilityClass))
+	if (AbilitySystemComponent)
 	{
-		UGameplayAbility* Ability = AbilityClass->GetDefaultObject<UGameplayAbility>();
-
-		if (IsValid(Ability))
+		if (HasAuthority() && AbilityToAquire)
 		{
-			FGameplayAbilitySpec AbilitySpec(
-				Ability,
-				Level,
-				InputCode
-			);
+			AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AbilityToAquire, 1, 0));
+		}
+		AbilitySystemComponent->InitAbilityActorInfo(this, this);
+	}
+}
 
-			AbilitySystemComponent->GiveAbility(AbilitySpec);
+void AVampireALusthCharacter::AquireAbilities(TArray<TSubclassOf<UGameplayAbility>> AbilityToAquire)
+{
+	for (TSubclassOf<UGameplayAbility> AbilityItem : AbilityToAquire )
+	{
+		AquireAbility(AbilityItem);
+		if (AbilityItem->IsChildOf(UGameplayAbilityBase::StaticClass()))
+		{
+			TSubclassOf<UGameplayAbilityBase> AbilityBaseClass = *AbilityItem;
+			if (AbilityBaseClass != nullptr)
+			{
+				AddAbilityToUI(AbilityBaseClass);
+			}
 		}
 	}
 }
@@ -225,6 +256,20 @@ void AVampireALusthCharacter::EnableInputControl()
 		}
 	}
 	
+}
+
+void AVampireALusthCharacter::AddAbilityToUI(TSubclassOf<UGameplayAbilityBase> AbilityToAdd)
+{
+	AVALPlayerController* PlayerControlerBase = Cast<AVALPlayerController>(GetController());
+	if (PlayerControlerBase)
+	{
+		UGameplayAbilityBase* AbilityInstance = AbilityToAdd.Get()->GetDefaultObject<UGameplayAbilityBase>();
+		if (AbilityInstance)
+		{
+			FGameplayAbilityInfo AbilityInfo = AbilityInstance->GetAbilityInfo();
+			PlayerControlerBase->AddAbilityToUI(AbilityInfo);
+		}
+	}
 }
 
 void AVampireALusthCharacter::HitStun(float StunDuration)

@@ -10,6 +10,7 @@
 #include "VampireALusthCharacter.generated.h"
 
 class UVampireALusthAttributeSet;
+class UGameplayAbilityBase;
 
 UCLASS(config=Game)
 class AVampireALusthCharacter : public ACharacter, public IAbilitySystemInterface
@@ -48,8 +49,14 @@ public:
 	virtual	float GetMaxHealth() const;
 
 	/** Grants an Ability at the given level */
+// 	UFUNCTION(BlueprintCallable, Category = "GAS|Abilities")
+// 		void GrantAbility(TSubclassOf<UGameplayAbility> AbilityClass, int32 Level, int32 InputCode);
+
 	UFUNCTION(BlueprintCallable, Category = "GAS|Abilities")
-		void GrantAbility(TSubclassOf<UGameplayAbility> AbilityClass, int32 Level, int32 InputCode);
+		void AquireAbility(TSubclassOf<UGameplayAbility> AbilityToAquire);
+
+	UFUNCTION(BlueprintCallable, Category = "GAS|Abilities")
+		void AquireAbilities(TArray<TSubclassOf<UGameplayAbility>> AbilityToAquire);
 
 	/*activate an Ability whit the matching input code*/
 	UFUNCTION(BlueprintCallable, Category = "GAS|Abilities")
@@ -112,6 +119,7 @@ protected:
 	void DisableInputControl();
 	void EnableInputControl();
 	FTimerHandle StunTimeHandle;
+	void AddAbilityToUI(TSubclassOf<UGameplayAbilityBase> AbilityToAdd);
 
 
 public:

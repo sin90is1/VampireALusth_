@@ -2,6 +2,7 @@
 
 
 #include "AbilityType.h"
+#include "GameplayAbilityBase.h"
 
 FGameplayAbilityInfo::FGameplayAbilityInfo()
 	:CooldownDuration(0),
