@@ -6,6 +6,8 @@
 #include "Abilities/GameplayAbilityTargetActor.h"
 #include "GAbilityTargetActorGroundSelect.generated.h"
 
+class UDecalComponent;
+class USceneComponent;
 /**
  * 
  */
@@ -25,4 +27,8 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta=(ExposeOnSpawn=true), Category = "GroundSelect")
 	float Radius;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "GroundSelect")
+		UDecalComponent* Decal;
+
+	USceneComponent* RootComp;
 };

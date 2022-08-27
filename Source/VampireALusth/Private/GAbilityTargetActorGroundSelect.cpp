@@ -6,16 +6,25 @@
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
 #include "DrawDebugHelpers.h"
+#include "Components\DecalComponent.h"
+#include "Components\SceneComponent.h"
 
 AGAbilityTargetActorGroundSelect::AGAbilityTargetActorGroundSelect()
 {
 	PrimaryActorTick.bCanEverTick = true;
+	Decal = CreateDefaultSubobject<UDecalComponent>("Decal");
+	RootComp = CreateDefaultSubobject<USceneComponent>("RootComp");
+	SetRootComponent(RootComp);
+	Decal->SetupAttachment(RootComp);
+	Radius = 200.0f;
+	Decal->DecalSize = FVector(Radius);
 }
 
 void AGAbilityTargetActorGroundSelect::StartTargeting(UGameplayAbility* Ability)
 {
 	OwningAbility = Ability;
 	MasterPC = Cast<APlayerController>(Ability->GetOwningActorFromActorInfo()->GetInstigatorController());
+	Decal->DecalSize = FVector(Radius);
 }
 
 void AGAbilityTargetActorGroundSelect::ConfirmTargetingAndContinue()
@@ -72,7 +81,7 @@ void AGAbilityTargetActorGroundSelect::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	FVector LookPoint;
 	GetPlayerLookingPoint(LookPoint);
-	DrawDebugSphere(GetWorld(), LookPoint, Radius, 32, FColor::Red, false, -1, 0, 5.0f);
+	Decal->SetWorldLocation(LookPoint);
 }
 
 bool AGAbilityTargetActorGroundSelect::GetPlayerLookingPoint(FVector& OutViewPoint)
