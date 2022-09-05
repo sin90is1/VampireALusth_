@@ -98,6 +98,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CharacterBase")
 		void HitStun(float StunDuration);
 
+	UFUNCTION(BlueprintCallable, Category = "CharacterBase")
+		void ApplyGESpectHandleTargetDataSpecsHandle(const FGameplayEffectSpecHandle& GESpectHandle, const FGameplayAbilityTargetDataHandle& TargetDataHandle);
+
 protected:
 
 	// Called when the game starts or when spawned

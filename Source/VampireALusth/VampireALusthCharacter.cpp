@@ -277,3 +277,11 @@ void AVampireALusthCharacter::HitStun(float StunDuration)
 	DisableInputControl();
 	GetWorldTimerManager().SetTimer(StunTimeHandle, this, &AVampireALusthCharacter::EnableInputControl, StunDuration, false);
 }
+
+void AVampireALusthCharacter::ApplyGESpectHandleTargetDataSpecsHandle(const FGameplayEffectSpecHandle& GESpectHandle, const FGameplayAbilityTargetDataHandle& TargetDataHandle)
+{
+	for (TSharedPtr<FGameplayAbilityTargetData> Data : TargetDataHandle.Data)
+	{
+		Data->ApplyGameplayEffectSpec(*GESpectHandle.Data.Get());
+	}
+}
